@@ -1,7 +1,9 @@
 const express = require("express");
 const controller = require("../controllers/driverController");
+const { authenticate, authorizeRoles } = require("../middlewares/authMiddleware");
 
 const router = express.Router();
+router.use(authorizeRoles("COMPANY_ADMIN", "FLEET_MANAGER"));
 
 router.route("/").post(controller.createDriver).get(controller.getDrivers);
 router.route("/:id").get(controller.getDriverById).put(controller.updateDriver).delete(controller.deleteDriver);
