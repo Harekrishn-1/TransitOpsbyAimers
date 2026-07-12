@@ -10,16 +10,14 @@ const expenseSchema = new mongoose.Schema(
     expenseDate: { type: Date, required: true, default: Date.now },
     description: { type: String, trim: true },
     receiptUrls: { type: [String], default: [] },
-    status: { type: String, enum: ["PENDING", "APPROVED", "REJECTED"], default: "PENDING" },
+   
     submittedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
-    reviewedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
-    reviewedAt: Date,
-    reviewNotes: { type: String, trim: true },
+   
   },
   { timestamps: true }
 );
 
-expenseSchema.index({ company: 1, status: 1, expenseDate: -1 });
+
 expenseSchema.index({ company: 1, vehicle: 1, category: 1, expenseDate: -1 });
 
 module.exports = mongoose.model("Expense", expenseSchema);
