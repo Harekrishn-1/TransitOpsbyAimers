@@ -16,7 +16,6 @@ const userSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Login identity is global; business identities are unique only inside a company.
 userSchema.index({ email: 1 }, { unique: true });
 userSchema.index({ company: 1, employeeId: 1 }, { unique: true, sparse: true });
 userSchema.index({ company: 1, roles: 1 });
