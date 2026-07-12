@@ -1,5 +1,6 @@
 const Maintenance = require("../models/Maintenance");
 const Vehicle = require("../models/Vehicle");
+const { requireCompanyResource } = require("../utils/companyRelations");
 
 const createMaintenance = async (req, res) => {
   try {
@@ -11,6 +12,8 @@ const createMaintenance = async (req, res) => {
       vendor,
       estimatedCost,
     } = req.body;
+
+    await requireCompanyResource(Vehicle, vehicle, req.user.company, "Vehicle");
 
     const maintenance = await Maintenance.create({
       company: req.user.company,
@@ -33,7 +36,7 @@ const createMaintenance = async (req, res) => {
       maintenance,
     });
   } catch (error) {
-    return res.status(500).json({
+    return res.status(error.statusCode || 500).json({
       success: false,
       message: error.message,
     });
@@ -45,7 +48,7 @@ const getAllMaintenance = async (req, res) => {
     const maintenance = await Maintenance.find({
       company: req.user.company,
     })
-      .populate("vehicle", "registrationNumber vehicleName")
+      .populate("vehicle", "registrationNumber name")
       .populate("createdBy", "name");
 
     return res.json({
@@ -87,12 +90,15 @@ const getMaintenanceById = async (req, res) => {
 
 const updateMaintenance = async (req, res) => {
   try {
+    const allowedFields = ["type", "title", "description", "vendor", "estimatedCost", "actualCost", "openedAt"];
+    const updates = Object.fromEntries(Object.entries(req.body).filter(([key]) => allowedFields.includes(key)));
+
     const maintenance = await Maintenance.findOneAndUpdate(
       {
         _id: req.params.id,
         company: req.user.company,
       },
-      req.body,
+      updates,
       {
         new: true,
         runValidators: true,
@@ -112,7 +118,7 @@ const updateMaintenance = async (req, res) => {
       maintenance,
     });
   } catch (error) {
-    return res.status(500).json({
+    return res.status(error.statusCode || 500).json({
       success: false,
       message: error.message,
     });

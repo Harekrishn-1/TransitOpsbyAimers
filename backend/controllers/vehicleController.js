@@ -21,8 +21,7 @@ exports.createVehicle = async (req, res) => {
   try {
     const company = companyIdFrom(req);
     const { registrationNumber, make, model, maximumLoadCapacityKg, odometerKm, acquisitionCost, acquisitionDate, region, status } = req.body;
-    const name = req.body.vehicleName ?? req.body.name;
-    const type = req.body.vehicleType ?? req.body.type;
+    const { name, type } = req.body;
     const vehicle = await Vehicle.create({ company, registrationNumber, name, make, model, type, maximumLoadCapacityKg, odometerKm, acquisitionCost, acquisitionDate, region, status, createdBy: req.user._id });
     res.status(201).json({ success: true, message: "Vehicle created successfully.", data: vehicle });
   } catch (error) {
@@ -35,9 +34,9 @@ exports.getVehicles = async (req, res) => {
     const company = companyIdFrom(req);
     const { page, limit, skip } = pagination(req.query);
     const filter = { company };
-    const { search, status, type, vehicleType, region } = req.query;
+    const { search, status, type, region } = req.query;
     if (status) filter.status = status;
-    if (vehicleType || type) filter.type = vehicleType || type;
+    if (type) filter.type = type;
     if (region) filter.region = region;
     if (search && search.trim()) {
       const expression = new RegExp(search.trim(), "i");
@@ -71,8 +70,6 @@ exports.updateVehicle = async (req, res) => {
     if (!mongoose.isValidObjectId(req.params.id)) return res.status(400).json({ success: false, message: "Invalid vehicle id.", data: null });
     const allowedFields = ["registrationNumber", "name", "make", "model", "type", "maximumLoadCapacityKg", "odometerKm", "acquisitionCost", "acquisitionDate", "region", "status"];
     const updates = Object.fromEntries(Object.entries(req.body).filter(([key]) => allowedFields.includes(key)));
-    if (Object.prototype.hasOwnProperty.call(req.body, "vehicleName")) updates.name = req.body.vehicleName;
-    if (Object.prototype.hasOwnProperty.call(req.body, "vehicleType")) updates.type = req.body.vehicleType;
     if (updates.registrationNumber) {
       updates.registrationNumber = updates.registrationNumber.toUpperCase().trim();
       const duplicate = await Vehicle.findOne({ company, registrationNumber: updates.registrationNumber, _id: { $ne: req.params.id } });

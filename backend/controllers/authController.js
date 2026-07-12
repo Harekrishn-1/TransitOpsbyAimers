@@ -1,14 +1,13 @@
-const jwt = require("jsonwebtoken");
 const Company = require("../models/Company");
 const User = require("../models/User");
+const { getJwtConfig, signUserToken } = require("../utils/token");
+
+function normalizeEmail(email) {
+  return typeof email === "string" ? email.toLowerCase().trim() : "";
+}
 
 function publicUser(user) {
   return { _id: user._id, company: user.company, name: user.name, email: user.email, phone: user.phone, employeeId: user.employeeId, roles: user.roles, isActive: user.isActive, createdAt: user.createdAt, updatedAt: user.updatedAt };
-}
-
-function signToken(user) {
-  if (!process.env.JWT_KEY) throw new Error("JWT_KEY is not configured.");
-  return jwt.sign({ sub: user._id.toString(), company: user.company.toString(), roles: user.roles }, process.env.JWT_KEY, { expiresIn: process.env.JWT_EXPIRES_IN || "1d" });
 }
 
 function errorResponse(error, res) {
@@ -17,28 +16,22 @@ function errorResponse(error, res) {
     return res.status(409).json({ success: false, message: `${field} already exists.`, data: null });
   }
   if (error.name === "ValidationError") return res.status(400).json({ success: false, message: error.message, data: null });
-  if (error.message === "JWT_KEY is not configured.") return res.status(500).json({ success: false, message: error.message, data: null });
+  if (error.message.startsWith("JWT_KEY")) return res.status(500).json({ success: false, message: error.message, data: null });
   return res.status(500).json({ success: false, message: "An unexpected error occurred.", data: null });
 }
 
 exports.registerCompany = async (req, res) => {
   let company;
   try {
-    if (!process.env.JWT_KEY) return res.status(500).json({ success: false, message: "JWT_KEY is not configured.", data: null });
+    getJwtConfig();
     const companyDetails = req.body.company || {};
     const adminDetails = req.body.admin || {};
-    const name = companyDetails.name ?? req.body.companyName;
-    const registrationNumber = companyDetails.registrationNumber ?? req.body.registrationNumber;
-    const email = companyDetails.email ?? req.body.companyEmail;
-    const phone = companyDetails.phone ?? req.body.companyPhone;
-    const adminName = adminDetails.name ?? req.body.adminName;
-    const adminEmail = adminDetails.email ?? req.body.adminEmail;
-    const password = adminDetails.password ?? req.body.password;
-    const adminPhone = adminDetails.phone ?? req.body.adminPhone;
+    const { name, registrationNumber, email, phone, legalName, address } = companyDetails;
+    const { name: adminName, email: adminEmail, password, phone: adminPhone } = adminDetails;
 
-    company = await Company.create({ name, legalName: companyDetails.legalName ?? req.body.legalName, registrationNumber, email, phone, address: companyDetails.address ?? req.body.address });
+    company = await Company.create({ name, legalName, registrationNumber, email, phone, address });
     const admin = await User.create({ company: company._id, name: adminName, email: adminEmail, password, phone: adminPhone, roles: ["COMPANY_ADMIN"] });
-    const token = signToken(admin);
+    const token = signUserToken(admin);
     return res.status(201).json({ success: true, message: "Company registered successfully.", data: { company, user: publicUser(admin), token } });
   } catch (error) {
     if (company) await Company.findByIdAndDelete(company._id);
@@ -48,13 +41,16 @@ exports.registerCompany = async (req, res) => {
 
 exports.login = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const email = normalizeEmail(req.body.email);
+    const password = typeof req.body.password === "string" ? req.body.password : "";
     if (!email || !password) return res.status(400).json({ success: false, message: "Email and password are required.", data: null });
-    const user = await User.findOne({ email: email.toLowerCase().trim() }).select("+password");
-    if (!user || !user.isActive || !(await user.comparePassword(password))) return res.status(401).json({ success: false, message: "Invalid email or password.", data: null });
+
+    const user = await User.findOne({ email }).select("+password");
+    const passwordMatches = user && user.isActive && user.password && (await user.comparePassword(password));
+    if (!passwordMatches) return res.status(401).json({ success: false, message: "Invalid email or password.", data: null });
     const company = await Company.findById(user.company);
     if (!company || !company.isActive) return res.status(403).json({ success: false, message: "Company account is inactive.", data: null });
-    const token = signToken(user);
+    const token = signUserToken(user);
     return res.status(200).json({ success: true, message: "Login successful.", data: { user: publicUser(user), company, token } });
   } catch (error) {
     return errorResponse(error, res);

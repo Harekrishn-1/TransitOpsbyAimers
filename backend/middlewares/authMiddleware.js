@@ -1,6 +1,6 @@
-const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 const Company = require("../models/Company");
+const { getJwtConfig, verifyUserToken } = require("../utils/token");
 
 function authError(res, status, message) {
   return res.status(status).json({ success: false, message, data: null });
@@ -9,10 +9,15 @@ function authError(res, status, message) {
 async function authenticate(req, res, next) {
   try {
     const header = req.headers.authorization || "";
-    if (!header.startsWith("Bearer ")) return authError(res, 401, "Authentication token is required.");
-    if (!process.env.JWT_KEY) return authError(res, 500, "JWT_KEY is not configured.");
+    const token = header.match(/^Bearer ([^\s]+)$/)?.[1];
+    if (!token) return authError(res, 401, "Authentication token is required.");
+    try {
+      getJwtConfig();
+    } catch (error) {
+      return authError(res, 500, error.message);
+    }
 
-    const payload = jwt.verify(header.slice(7), process.env.JWT_KEY);
+    const payload = verifyUserToken(token);
     const user = await User.findById(payload.sub);
     if (!user || !user.isActive) return authError(res, 401, "User account is inactive or no longer exists.");
 

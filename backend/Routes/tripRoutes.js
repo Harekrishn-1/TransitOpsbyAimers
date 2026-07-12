@@ -12,25 +12,24 @@ const {
 } = require("../controllers/tripController");
 
 const { protect, authorize } = require("../middlewares/auth");
+const { FLEET_MANAGEMENT_ROLES, TRIP_VIEW_ROLES } = require("../models/constants");
 
 // All trip routes require a logged-in user
 router.use(protect);
 
 // Roles allowed to manage trips — adjust to match your team's final role list
-const CAN_MANAGE_TRIPS = ["COMPANY_ADMIN", "FLEET_MANAGER"];
-
 router
   .route("/")
-  .post(authorize(...CAN_MANAGE_TRIPS), createTrip)
-  .get(authorize(...CAN_MANAGE_TRIPS, "SAFETY_OFFICER", "FINANCIAL_ANALYST"), getTrips);
+  .post(authorize(...FLEET_MANAGEMENT_ROLES), createTrip)
+  .get(authorize(...TRIP_VIEW_ROLES), getTrips);
 
 router
   .route("/:id")
-  .get(authorize(...CAN_MANAGE_TRIPS, "SAFETY_OFFICER", "FINANCIAL_ANALYST"), getTripById)
-  .put(authorize(...CAN_MANAGE_TRIPS), updateTrip);
+  .get(authorize(...TRIP_VIEW_ROLES), getTripById)
+  .put(authorize(...FLEET_MANAGEMENT_ROLES), updateTrip);
 
-router.post("/:id/dispatch", authorize(...CAN_MANAGE_TRIPS), dispatchTrip);
-router.post("/:id/complete", authorize(...CAN_MANAGE_TRIPS), completeTrip);
-router.post("/:id/cancel", authorize(...CAN_MANAGE_TRIPS), cancelTrip);
+router.post("/:id/dispatch", authorize(...FLEET_MANAGEMENT_ROLES), dispatchTrip);
+router.post("/:id/complete", authorize(...FLEET_MANAGEMENT_ROLES), completeTrip);
+router.post("/:id/cancel", authorize(...FLEET_MANAGEMENT_ROLES), cancelTrip);
 
 module.exports = router;

@@ -11,40 +11,41 @@ const {
 
 const isAuth = require("../middlewares/isAuth");
 const authorize = require("../middlewares/authorize");
+const { FLEET_MANAGEMENT_ROLES } = require("../models/constants");
 
 
 router.post(
   "/",
   isAuth,
-  authorize("COMPANY_ADMIN", "FLEET_MANAGER"),
+  authorize(...FLEET_MANAGEMENT_ROLES),
   createFuelLog
 );
 
 router.get(
   "/",
   isAuth,
-  authorize("COMPANY_ADMIN", "FLEET_MANAGER"),
+  authorize(...FLEET_MANAGEMENT_ROLES),
   getAllFuelLogs
 );
 
 router.get(
   "/:id",
   isAuth,
-  authorize("COMPANY_ADMIN", "FLEET_MANAGER"),
+  authorize(...FLEET_MANAGEMENT_ROLES),
   getFuelLogById
 );
 
 router.put(
   "/:id",
   isAuth,
-  authorize("COMPANY_ADMIN", "FLEET_MANAGER"),
+  authorize(...FLEET_MANAGEMENT_ROLES),
   updateFuelLog
 );
 
 router.delete(
   "/:id",
   isAuth,
-  authorize("COMPANY_ADMIN", "FLEET_MANAGER"),
+  authorize(...FLEET_MANAGEMENT_ROLES),
   deleteFuelLog
 );
 

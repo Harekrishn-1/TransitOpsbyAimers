@@ -13,7 +13,6 @@ const dashboardRoutes = require("../Routes/dashboardRoutes");
 const reportRoutes = require("../Routes/reportRoutes");
 const expenseRoutes = require("../Routes/expenseRoutes");
 const tripRoutes = require("../Routes/tripRoutes");
-const { authenticate } = require("../middlewares/authMiddleware");
 const errorHandler = require("../middlewares/errorHandler");
 
 const app = express();
@@ -26,8 +25,8 @@ app.use(morgan("dev"));
 app.use("/auth", authRoutes);
 app.use("/company", companyRoutes);
 app.use("/users", userRoutes);
-app.use("/drivers", authenticate, driverRoutes);
-app.use("/vehicles", authenticate, vehicleRoutes);
+app.use("/drivers", driverRoutes);
+app.use("/vehicles", vehicleRoutes);
 app.use("/api/trips", tripRoutes);
 app.use("/api/maintenance", maintenanceRoutes);
 app.use("/api/fuel", fuelLogRoutes);

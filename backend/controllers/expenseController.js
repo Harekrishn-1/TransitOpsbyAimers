@@ -1,4 +1,5 @@
 const Expense = require("../models/Expense");
+const { validateCompanyVehicleAndTrip } = require("../utils/companyRelations");
 
 const createExpense = async (req, res) => {
   try {
@@ -11,6 +12,8 @@ const createExpense = async (req, res) => {
       description,
       receiptUrls,
     } = req.body;
+
+    await validateCompanyVehicleAndTrip({ company: req.user.company, vehicle, trip });
 
     const expense = await Expense.create({
       company: req.user.company,
@@ -30,7 +33,7 @@ const createExpense = async (req, res) => {
       expense,
     });
   } catch (error) {
-    return res.status(500).json({
+    return res.status(error.statusCode || 500).json({
       success: false,
       message: error.message,
     });
@@ -42,7 +45,7 @@ const getAllExpenses = async (req, res) => {
     const expenses = await Expense.find({
       company: req.user.company,
     })
-      .populate("vehicle", "registrationNumber vehicleName")
+      .populate("vehicle", "registrationNumber name")
       .populate("trip", "source destination")
       .populate("submittedBy", "name")
       .sort({ expenseDate: -1 });
@@ -87,12 +90,20 @@ const getExpenseById = async (req, res) => {
 
 const updateExpense = async (req, res) => {
   try {
+    const allowedFields = ["vehicle", "trip", "category", "amount", "expenseDate", "description", "receiptUrls", "status", "reviewNotes"];
+    const updates = Object.fromEntries(Object.entries(req.body).filter(([key]) => allowedFields.includes(key)));
+    await validateCompanyVehicleAndTrip({ company: req.user.company, vehicle: updates.vehicle, trip: updates.trip });
+    if (updates.status !== undefined) {
+      updates.reviewedBy = req.user._id;
+      updates.reviewedAt = new Date();
+    }
+
     const expense = await Expense.findOneAndUpdate(
       {
         _id: req.params.id,
         company: req.user.company,
       },
-      req.body,
+      updates,
       {
         new: true,
         runValidators: true,
@@ -112,7 +123,7 @@ const updateExpense = async (req, res) => {
       expense,
     });
   } catch (error) {
-    return res.status(500).json({
+    return res.status(error.statusCode || 500).json({
       success: false,
       message: error.message,
     });

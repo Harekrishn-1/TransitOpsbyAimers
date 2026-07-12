@@ -1,6 +1,7 @@
 const FuelLog = require("../models/FuelLog");
 const Vehicle = require("../models/Vehicle");
 const Trip = require("../models/Trip");
+const { validateCompanyVehicleAndTrip } = require("../utils/companyRelations");
 
 
 const createFuelLog = async (req, res) => {
@@ -15,6 +16,8 @@ const createFuelLog = async (req, res) => {
       receiptUrl,
       filledAt,
     } = req.body;
+
+    await validateCompanyVehicleAndTrip({ company: req.user.company, vehicle, trip });
 
     const fuelLog = await FuelLog.create({
       company: req.user.company,
@@ -35,7 +38,7 @@ const createFuelLog = async (req, res) => {
       fuelLog,
     });
   } catch (error) {
-    return res.status(500).json({
+    return res.status(error.statusCode || 500).json({
       success: false,
       message: error.message,
     });
@@ -48,7 +51,7 @@ const getAllFuelLogs = async (req, res) => {
     const fuelLogs = await FuelLog.find({
       company: req.user.company,
     })
-      .populate("vehicle", "registrationNumber vehicleName")
+      .populate("vehicle", "registrationNumber name")
       .populate("trip", "source destination")
       .populate("recordedBy", "name")
       .sort({ filledAt: -1 });
@@ -97,12 +100,16 @@ const getFuelLogById = async (req, res) => {
 
 const updateFuelLog = async (req, res) => {
   try {
+    const allowedFields = ["vehicle", "trip", "liters", "totalCost", "odometerKm", "fuelStation", "receiptUrl", "filledAt"];
+    const updates = Object.fromEntries(Object.entries(req.body).filter(([key]) => allowedFields.includes(key)));
+    await validateCompanyVehicleAndTrip({ company: req.user.company, vehicle: updates.vehicle, trip: updates.trip });
+
     const fuelLog = await FuelLog.findOneAndUpdate(
       {
         _id: req.params.id,
         company: req.user.company,
       },
-      req.body,
+      updates,
       {
         new: true,
         runValidators: true,
@@ -122,7 +129,7 @@ const updateFuelLog = async (req, res) => {
       fuelLog,
     });
   } catch (error) {
-    return res.status(500).json({
+    return res.status(error.statusCode || 500).json({
       success: false,
       message: error.message,
     });

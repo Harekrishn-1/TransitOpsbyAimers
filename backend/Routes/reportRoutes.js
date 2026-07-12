@@ -8,11 +8,12 @@ const {
 
 const isAuth = require("../middlewares/isAuth");
 const authorize = require("../middlewares/authorize");
+const { FINANCIAL_VIEW_ROLES } = require("../models/constants");
 
 router.get(
     "/",
     isAuth,
-    authorize("COMPANY_ADMIN","FLEET_MANAGER"),
+    authorize(...FINANCIAL_VIEW_ROLES),
     getReports
 );
 

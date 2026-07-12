@@ -27,7 +27,7 @@ function parseDate(value) {
 async function getDriverUser(userId, companyId) {
   if (!mongoose.isValidObjectId(userId)) throw Object.assign(new Error("A valid driver user id is required."), { statusCode: 400 });
   const user = await User.findOne({ _id: userId, company: companyId, isActive: true });
-  if (!user) throw Object.assign(new Error("Driver user was not found in this company."), { statusCode: 400 });
+  if (!user || !user.roles.includes("DRIVER")) throw Object.assign(new Error("The selected user must be an active driver in this company."), { statusCode: 400 });
 }
 
 exports.createDriver = async (req, res) => {
