@@ -1,51 +1,24 @@
-import mongoose from "mongoose";
+const mongoose = require("mongoose");
+const { USER_ROLES } = require("./constants");
 
 const userSchema = new mongoose.Schema(
   {
-    name: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-
-    email: {
-      type: String,
-      required: true,
-      unique: true,
-      lowercase: true,
-      trim: true,
-    },
-
-    password: {
-      type: String,
-      required: true,
-    },
-
-    role: {
-      type: String,
-      enum: ["Admin", "Driver"],
-      required: true,
-    },
-
-    // Linked profile based on role
-    adminProfile: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Admin",
-    },
-
-    driverProfile: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Driver",
-    },
-
-    phone: String,
-
-    isActive: {
-      type: Boolean,
-      default: true,
-    },
+    company: { type: mongoose.Schema.Types.ObjectId, ref: "Company", required: true, index: true },
+    name: { type: String, required: true, trim: true },
+    email: { type: String, required: true, trim: true, lowercase: true },
+    password: { type: String, required: true, select: false },
+    phone: { type: String, trim: true },
+    employeeId: { type: String, trim: true, uppercase: true },
+    roles: { type: [{ type: String, enum: USER_ROLES }], required: true, validate: [(roles) => roles.length > 0, "At least one role is required"] },
+    isActive: { type: Boolean, default: true },
+    createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
   },
   { timestamps: true }
 );
 
-export default mongoose.model("User", userSchema);
+// Login identity is global; business identities are unique only inside a company.
+userSchema.index({ email: 1 }, { unique: true });
+userSchema.index({ company: 1, employeeId: 1 }, { unique: true, sparse: true });
+userSchema.index({ company: 1, roles: 1 });
+
+module.exports = mongoose.model("User", userSchema);

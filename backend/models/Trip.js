@@ -1,179 +1,42 @@
-import mongoose from "mongoose";
-
-const expenseCategoryEnum = [
-  "Fuel",
-  "Food",
-  "Toll",
-  "Lodging",
-  "Maintenance",
-  "Other",
-];
-
-const tripExpenseSchema = new mongoose.Schema(
-  {
-    category: {
-      type: String,
-      enum: expenseCategoryEnum,
-      required: true,
-    },
-
-    amount: {
-      type: Number,
-      required: true,
-      min: 0,
-    },
-
-    description: String,
-
-    photos: {
-      type: [String],
-      default: [],
-    },
-
-    recordedAt: {
-      type: Date,
-      default: Date.now,
-    },
-  },
-  { _id: true }
-);
+const mongoose = require("mongoose");
+const { TRIP_STATUSES } = require("./constants");
 
 const tripSchema = new mongoose.Schema(
   {
-    vehicle: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Vehicle",
-      required: true,
-    },
-
-    driver: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Driver",
-      required: true,
-    },
-
-    createdBy: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Admin",
-      required: true,
-    },
-
-    source: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-
-    destination: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-
-    cargoWeight: {
-      type: Number,
-      min: 0,
-    },
-
-    plannedDistance: {
-      type: Number,
-      min: 0,
-    },
-
-    actualDistance: {
-      type: Number,
-      default: 0,
-      min: 0,
-    },
-
-    fuelConsumed: {
-      type: Number,
-      default: 0,
-      min: 0,
-    },
-
-    // Total budget allotted by admin for this trip
-    allocatedBudget: {
-      type: Number,
-      required: true,
-      min: 0,
-    },
-
-    // Optional category-wise budget split by admin
-    allocatedCosts: {
-      fuel: { type: Number, default: 0, min: 0 },
-      food: { type: Number, default: 0, min: 0 },
-      toll: { type: Number, default: 0, min: 0 },
-      lodging: { type: Number, default: 0, min: 0 },
-      other: { type: Number, default: 0, min: 0 },
-    },
-
-    // Driver logs expenses during the trip (starts from 0, grows over time)
-    expenses: {
-      type: [tripExpenseSchema],
-      default: [],
-    },
-
-    actualTotalSpent: {
-      type: Number,
-      default: 0,
-      min: 0,
-    },
-
-    exceedsBudget: {
-      type: Boolean,
-      default: false,
-    },
-
-    status: {
-      type: String,
-      enum: ["Draft", "Assigned", "In Progress", "Completed", "Cancelled"],
-      default: "Draft",
-    },
-
-    dispatchDate: Date,
-    completedDate: Date,
-
-    // Admin reviews only when trip is completed and spend exceeds allocated budget
-    budgetReview: {
-      status: {
-        type: String,
-        enum: ["Not Required", "Pending", "Accepted", "Rejected"],
-        default: "Not Required",
-      },
-      reviewedBy: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "User",
-      },
-      adminNotes: String,
-      reviewedAt: Date,
-    },
+    company: { type: mongoose.Schema.Types.ObjectId, ref: "Company", required: true, index: true },
+    tripNumber: { type: String, required: true, trim: true, uppercase: true },
+    vehicle: { type: mongoose.Schema.Types.ObjectId, ref: "Vehicle", required: true },
+    driver: { type: mongoose.Schema.Types.ObjectId, ref: "Driver", required: true },
+    source: { type: String, required: true, trim: true },
+    destination: { type: String, required: true, trim: true },
+    cargoWeightKg: { type: Number, required: true, min: 0 },
+    plannedDistanceKm: { type: Number, required: true, min: 0 },
+    actualDistanceKm: { type: Number, min: 0 },
+    dispatchOdometerKm: { type: Number, min: 0 },
+    completionOdometerKm: { type: Number, min: 0 },
+    plannedStartAt: Date,
+    dispatchedAt: Date,
+    completedAt: Date,
+    status: { type: String, enum: TRIP_STATUSES, default: "DRAFT" },
+    revenue: { type: Number, min: 0, default: 0 },
+    notes: { type: String, trim: true },
+    createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+    dispatchedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+    completedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
   },
   { timestamps: true }
 );
 
-tripSchema.pre("save", function syncBudgetFlags(next) {
-  const expenses = this.expenses || [];
-  this.actualTotalSpent = expenses.reduce(
-    (total, entry) => total + (entry.amount || 0),
-    0
-  );
+tripSchema.index({ company: 1, tripNumber: 1 }, { unique: true });
+tripSchema.index({ company: 1, status: 1, vehicle: 1, driver: 1 });
+tripSchema.index({ company: 1, vehicle: 1, status: 1 }, { unique: true, partialFilterExpression: { status: "DISPATCHED" } });
+tripSchema.index({ company: 1, driver: 1, status: 1 }, { unique: true, partialFilterExpression: { status: "DISPATCHED" } });
 
-  this.exceedsBudget = this.actualTotalSpent > this.allocatedBudget;
-
-  if (
-    this.status === "Completed" &&
-    this.exceedsBudget &&
-    this.budgetReview.status === "Not Required"
-  ) {
-    this.budgetReview.status = "Pending";
+tripSchema.pre("validate", function validateOdometer(next) {
+  if (this.completionOdometerKm != null && this.dispatchOdometerKm != null && this.completionOdometerKm < this.dispatchOdometerKm) {
+    return next(new Error("Completion odometer cannot be less than dispatch odometer."));
   }
-
-  if (!this.exceedsBudget && this.budgetReview.status === "Not Required") {
-    this.budgetReview.status = "Not Required";
-  }
-
   next();
 });
 
-export default mongoose.model("Trip", tripSchema);
+module.exports = mongoose.model("Trip", tripSchema);
