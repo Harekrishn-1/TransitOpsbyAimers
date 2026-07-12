@@ -2,9 +2,17 @@ import mongoose from "mongoose";
 
 const driverSchema = new mongoose.Schema(
   {
+    user: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+      unique: true,
+    },
+
     name: {
       type: String,
       required: true,
+      trim: true,
     },
 
     contactNumber: {
@@ -16,6 +24,8 @@ const driverSchema = new mongoose.Schema(
       type: String,
       required: true,
       unique: true,
+      uppercase: true,
+      trim: true,
     },
 
     licenseCategory: {
@@ -28,17 +38,16 @@ const driverSchema = new mongoose.Schema(
       required: true,
     },
 
-    safetyScore: {
-      type: Number,
-      default: 100,
-      min: 0,
-      max: 100,
-    },
-
     status: {
       type: String,
-      enum: ["Available", "On Trip", "Off Duty", "Suspended"],
+      enum: ["Available", "On Trip", "On Leave", "Suspended"],
       default: "Available",
+    },
+
+    registeredBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Admin",
+      required: true,
     },
   },
   { timestamps: true }

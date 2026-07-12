@@ -13,6 +13,7 @@ const vehicleSchema = new mongoose.Schema(
     vehicleName: {
       type: String,
       required: true,
+      trim: true,
     },
 
     model: {
@@ -34,21 +35,27 @@ const vehicleSchema = new mongoose.Schema(
     odometer: {
       type: Number,
       default: 0,
+      min: 0,
     },
 
     acquisitionCost: {
       type: Number,
       required: true,
+      min: 0,
     },
 
-    region: {
-      type: String,
-    },
+    region: String,
 
     status: {
       type: String,
       enum: ["Available", "On Trip", "In Shop", "Retired"],
       default: "Available",
+    },
+
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Admin",
+      required: true,
     },
   },
   { timestamps: true }
