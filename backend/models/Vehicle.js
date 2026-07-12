@@ -9,7 +9,7 @@ const vehicleSchema = new mongoose.Schema(
     make: { type: String, trim: true },
     model: { type: String, required: true, trim: true },
     type: { type: String, required: true, trim: true },
-    maximumLoadCapacityKg: { type: Number, required: true, min: 0 },
+    maximumLoadCapacityKg: { type: Number, required: true, min: 0.01 },
     odometerKm: { type: Number, default: 0, min: 0 },
     acquisitionCost: { type: Number, required: true, min: 0 },
     acquisitionDate: Date,

@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const bcrypt = require("bcrypt");
 const { USER_ROLES } = require("./constants");
 
 const userSchema = new mongoose.Schema(
@@ -19,5 +20,15 @@ const userSchema = new mongoose.Schema(
 userSchema.index({ email: 1 }, { unique: true });
 userSchema.index({ company: 1, employeeId: 1 }, { unique: true, sparse: true });
 userSchema.index({ company: 1, roles: 1 });
+
+userSchema.pre("save", async function hashPassword(next) {
+  if (!this.isModified("password")) return next();
+  this.password = await bcrypt.hash(this.password, 12);
+  next();
+});
+
+userSchema.methods.comparePassword = function comparePassword(candidatePassword) {
+  return bcrypt.compare(candidatePassword, this.password);
+};
 
 module.exports = mongoose.model("User", userSchema);
